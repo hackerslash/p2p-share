@@ -9,7 +9,6 @@ A **Peer-to-Peer (P2P) File Sharing** application built with React and PeerJS, a
 - [Installation](#installation)
 - [Usage](#usage)
 - [Dependencies](#dependencies)
-- [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 
@@ -90,35 +89,9 @@ This application uses **WebRTC** technology via **PeerJS** to establish a direct
 - **Next.js** - React framework for server-side rendering.
 - **Tailwind CSS** - Utility-first CSS framework for styling.
 
-## Contributing
-
-Contributions are welcome! Here's how you can help:
-
-1. **Fork the Repository**
-
-   Click on the **Fork** button at the top right of the page.
-2. **Create Your Feature Branch**
-
-   ```bash
-   git checkout -b feature/AmazingFeature
-   ```
-3. **Commit Your Changes**
-
-   ```bash
-   git commit -m 'Add some amazing feature'
-   ```
-4. **Push to the Branch**
-
-   ```bash
-   git push origin feature/AmazingFeature
-   ```
-5. **Open a Pull Request**
-
-   Go to your forked repository and click on the **Pull Request** button.
-
 ## License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License**.
 
 ## Acknowledgements
 
@@ -139,4 +112,3 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 For any inquiries or feedback, please contact me at [afridijnv19@gmail.com](mailto:afridijnv19@gmail.com).
 
 ---
-
