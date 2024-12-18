@@ -1,14 +1,14 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
-import Peer from 'peerjs';
+import Peer, { DataConnection } from 'peerjs';
 import Navbar from './Navbar';
 
 const FileShare: React.FC = () => {
   const [peerId, setPeerId] = useState<string>('');
   const [peer, setPeer] = useState<Peer | null>(null);
   const [connectId, setConnectId] = useState<string>('');
-  const [conn, setConn] = useState<Peer.DataConnection | null>(null);
+  const [conn, setConn] = useState<DataConnection | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>('');
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -44,7 +44,7 @@ const FileShare: React.FC = () => {
     }
   };
 
-  const setupConnection = (connection: Peer.DataConnection) => {
+  const setupConnection = (connection: DataConnection) => {
     connection.on('open', () => {
       setStatus('Connected');
       setIsConnected(true);
