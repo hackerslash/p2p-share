@@ -1,45 +1,37 @@
-import { NextResponse } from 'next/server';
+import { Redis } from 'ioredis'
+import { NextResponse } from 'next/server'
 
-// In-memory store (replace with Redis/DB for production)
-const peerStore = new Map<string, {
-  peerId: string,
-  createdAt: number
-}>();
+if (!process.env.REDIS_URL) {
+  throw new Error('Redis URL is not set')
+}
 
-// Clean up old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of peerStore.entries()) {
-    if (now - value.createdAt > 1000 * 60 * 30) { // 30 minutes expiry
-      peerStore.delete(key);
-    }
-  }
-}, 1000 * 60 * 5);
+const redis = new Redis(process.env.REDIS_URL)
 
 export async function POST(req: Request) {
-  const { peerId } = await req.json();
-  const shareId = Math.random().toString(36).substring(2, 15);
+  const { peerId } = await req.json()
+  const shareId = Math.random().toString(36).substring(2, 15)
   
-  peerStore.set(shareId, {
+  // Store with 30 minute expiry
+  await redis.set(shareId, JSON.stringify({
     peerId,
     createdAt: Date.now()
-  });
+  }), 'EX', 1800) // 30 minutes in seconds
 
-  return NextResponse.json({ shareId });
+  return NextResponse.json({ shareId })
 }
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const shareId = url.searchParams.get('id');
+  const url = new URL(req.url)
+  const shareId = url.searchParams.get('id')
 
   if (!shareId) {
-    return NextResponse.json({ error: 'Share ID not provided' }, { status: 400 });
+    return NextResponse.json({ error: 'Share ID not provided' }, { status: 400 })
   }
 
-  const share = peerStore.get(shareId);
+  const share = await redis.get(shareId)
   if (!share) {
-    return NextResponse.json({ error: 'Share not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Share not found' }, { status: 404 })
   }
 
-  return NextResponse.json({ peerId: share.peerId });
+  return NextResponse.json({ peerId: JSON.parse(share).peerId })
 }
