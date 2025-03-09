@@ -1,6 +1,6 @@
-# P2P File Share
+# WarpShare
 
-A **Peer-to-Peer (P2P) File Sharing** application built with React and PeerJS, allowing users to share files directly between browsers without the need for intermediary servers.
+A lightning-fast **Peer-to-Peer (P2P) File Sharing** application built with React and PeerJS, allowing users to share files directly between browsers without the need for intermediary servers.
 
 ## Table of Contents
 
@@ -14,11 +14,11 @@ A **Peer-to-Peer (P2P) File Sharing** application built with React and PeerJS, a
 
 ## Features
 
-- **Direct P2P File Transfer**: Share files directly between users without server storage.
-- **WebRTC Technology**: Utilizes WebRTC for establishing secure peer connections.
-- **User-Friendly Interface**: Simple and intuitive design with real-time status updates.
-- **Privacy and Security**: Files are not stored on any server, enhancing privacy.
-- **Cross-Platform**: Works on any modern browser supporting WebRTC.
+- **Instant P2P File Transfer**: Share files directly between users without server storage
+- **WebRTC Technology**: Utilizes WebRTC for establishing secure peer connections
+- **User-Friendly Interface**: Simple and intuitive design with real-time status updates
+- **Privacy and Security**: Files are not stored on any server, enhancing privacy
+- **Cross-Platform**: Works on any modern browser supporting WebRTC
 
 ## How It Works
 
