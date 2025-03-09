@@ -14,6 +14,12 @@ interface FileTransfer {
   isReceiving?: boolean;
 }
 
+interface SpeedHistory {
+  time: number;
+  loaded: number;
+  speed: number;
+}
+
 const FileShare: React.FC = () => {
   const [peerId, setPeerId] = useState<string>('');
   const [peer, setPeer] = useState<Peer | null>(null);
@@ -32,6 +38,10 @@ const FileShare: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const CHUNK_SIZE = 262144; // Increase to 256KB chunks
+  const SPEED_UPDATE_INTERVAL = 500; // Update speed every 500ms
+  const SPEED_HISTORY_LENGTH = 5; // Number of samples to average
+  const lastSpeedUpdate = useRef<{ [key: string]: number }>({});
+  const speedHistory = useRef<{ [key: string]: SpeedHistory[] }>({});
 
   useEffect(() => {
     return () => {
@@ -265,24 +275,60 @@ const FileShare: React.FC = () => {
   const updateTransferSpeed = (fileId: string, loaded: number, isReceiving: boolean) => {
     const now = Date.now();
     const last = lastProgressUpdate.current[fileId];
+    const lastUpdate = lastSpeedUpdate.current[fileId] || 0;
     
-    if (last) {
-      const timeDiff = (now - last.time) / 1000; // convert to seconds
-      const bytesDiff = loaded - last.loaded;
-      const speed = bytesDiff / timeDiff; // bytes per second
-      
-      if (isReceiving) {
-        setReceivingFiles(prev => prev.map(f => 
-          f.file.name === fileId ? { ...f, speed } : f
-        ));
-      } else {
-        setFiles(prev => prev.map((f, idx) => 
-          idx === parseInt(fileId) ? { ...f, speed } : f
-        ));
+    // Initialize speed history for this file if it doesn't exist
+    if (!speedHistory.current[fileId]) {
+      speedHistory.current[fileId] = [];
+    }
+
+    // Only update speed if enough time has passed since last update
+    if (now - lastUpdate >= SPEED_UPDATE_INTERVAL) {
+      if (last) {
+        const timeDiff = (now - last.time) / 1000; // convert to seconds
+        const bytesDiff = Math.max(0, loaded - last.loaded); // Ensure non-negative
+        const currentSpeed = bytesDiff / timeDiff; // bytes per second
+
+        // Add to speed history
+        speedHistory.current[fileId].push({
+          time: now,
+          loaded,
+          speed: currentSpeed
+        });
+
+        // Keep only the last N samples
+        if (speedHistory.current[fileId].length > SPEED_HISTORY_LENGTH) {
+          speedHistory.current[fileId].shift();
+        }
+
+        // Calculate average speed from history
+        const avgSpeed = speedHistory.current[fileId].reduce((sum, item) => sum + item.speed, 0) / 
+                        speedHistory.current[fileId].length;
+
+        // Only update if we have a reasonable speed value
+        if (avgSpeed >= 0 && avgSpeed < 1e9) { // Max 1GB/s as sanity check
+          if (isReceiving) {
+            setReceivingFiles(prev => prev.map(f => 
+              f.file.name === fileId ? { ...f, speed: avgSpeed } : f
+            ));
+          } else {
+            setFiles(prev => prev.map((f, idx) => 
+              idx === parseInt(fileId) ? { ...f, speed: avgSpeed } : f
+            ));
+          }
+        }
       }
+      lastSpeedUpdate.current[fileId] = now;
     }
 
     lastProgressUpdate.current[fileId] = { time: now, loaded };
+  };
+
+  // Clean up function to prevent memory leaks
+  const cleanupSpeedHistory = (fileId: string) => {
+    delete speedHistory.current[fileId];
+    delete lastSpeedUpdate.current[fileId];
+    delete lastProgressUpdate.current[fileId];
   };
 
   const formatSpeed = (speed?: number) => {
