@@ -128,19 +128,18 @@ const FileShare: React.FC = () => {
       name: string;
       type: string;
       totalChunks: number;
+      receivedChunks: number;
     } | null = null;
 
     connection.on('data', (data: any) => {
       if (data.type === 'chunk') {
-        const progress = Math.round((data.chunkIndex + 1) / data.totalChunks * 100);
-        setStatus(`Receiving ${data.fileName}: ${progress}%`);
-        
         if (!receivingFile) {
           receivingFile = {
-            data: [],
+            data: new Array(data.totalChunks),
             name: data.fileName,
             type: data.fileType,
             totalChunks: data.totalChunks,
+            receivedChunks: 0
           };
           setReceivingFiles(prev => [...prev, {
             file: new File([], data.fileName, { type: data.fileType }),
@@ -151,24 +150,35 @@ const FileShare: React.FC = () => {
         }
 
         receivingFile.data[data.chunkIndex] = data.chunk;
-        updateTransferSpeed(data.fileName, (data.chunkIndex + 1) * CHUNK_SIZE, true);
+        receivingFile.receivedChunks++;
 
+        const progress = Math.round((receivingFile.receivedChunks / data.totalChunks) * 100);
+        
         setReceivingFiles(prev => prev.map(f => 
           f.file.name === data.fileName 
             ? { ...f, progress, status: 'transferring' } 
             : f
         ));
 
-        if (receivingFile.data.length === receivingFile.totalChunks) {
-          const fileBlob = new Blob(receivingFile.data, { type: receivingFile.type });
-          downloadFile(fileBlob, receivingFile.name, receivingFile.type);
-          setReceivingFiles(prev => prev.map(f => 
-            f.file.name === data.fileName 
-              ? { ...f, progress: 100, status: 'completed' } 
-              : f
-          ));
+        if (receivingFile.receivedChunks === receivingFile.totalChunks) {
+          const allChunksReceived = receivingFile.data.every(chunk => chunk !== undefined);
+          
+          if (allChunksReceived) {
+            const fileBlob = new Blob(receivingFile.data, { type: receivingFile.type });
+            downloadFile(fileBlob, receivingFile.name, receivingFile.type);
+            setReceivingFiles(prev => prev.map(f => 
+              f.file.name === data.fileName 
+                ? { ...f, progress: 100, status: 'completed' } 
+                : f
+            ));
+          } else {
+            setReceivingFiles(prev => prev.map(f => 
+              f.file.name === data.fileName 
+                ? { ...f, status: 'error' } 
+                : f
+            ));
+          }
           receivingFile = null;
-          setStatus('File received');
         }
       }
     });
@@ -186,39 +196,55 @@ const FileShare: React.FC = () => {
     
     const file = fileTransfer.file;
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    const CONCURRENT_CHUNKS = 5; // Number of chunks to send in parallel
+    const CONCURRENT_CHUNKS = 3; // Reduced from 5 to 3 for better reliability
+    const MAX_RETRIES = 3;
     
     setFiles(prev => prev.map((f, i) => 
       i === index ? { ...f, status: 'transferring' } : f
     ));
 
+    const sendChunk = async (chunkIndex: number, retryCount = 0): Promise<boolean> => {
+      try {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+        const buffer = await chunk.arrayBuffer();
+        
+        conn.send({
+          type: 'chunk',
+          fileId: index,
+          fileName: file.name,
+          fileType: file.type,
+          chunk: buffer,
+          chunkIndex: chunkIndex,
+          totalChunks,
+        });
+        
+        return true;
+      } catch (error) {
+        if (retryCount < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          return sendChunk(chunkIndex, retryCount + 1);
+        }
+        return false;
+      }
+    };
+
     for (let i = 0; i < totalChunks; i += CONCURRENT_CHUNKS) {
       const chunkPromises = [];
       
       for (let j = 0; j < CONCURRENT_CHUNKS && (i + j) < totalChunks; j++) {
-        const chunkIndex = i + j;
-        const start = chunkIndex * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        
-        const chunkPromise = (async () => {
-          const chunk = file.slice(start, end);
-          const buffer = await chunk.arrayBuffer();
-          
-          conn.send({
-            type: 'chunk',
-            fileId: index,
-            fileName: file.name,
-            fileType: file.type,
-            chunk: buffer,
-            chunkIndex: chunkIndex,
-            totalChunks,
-          });
-        })();
-        
-        chunkPromises.push(chunkPromise);
+        chunkPromises.push(sendChunk(i + j));
       }
       
-      await Promise.all(chunkPromises);
+      const results = await Promise.all(chunkPromises);
+      
+      if (results.includes(false)) {
+        setFiles(prev => prev.map((f, idx) => 
+          idx === index ? { ...f, status: 'error' } : f
+        ));
+        return;
+      }
       
       const progress = Math.round(((i + CONCURRENT_CHUNKS) / totalChunks) * 100);
       setFiles(prev => prev.map((f, idx) => 
