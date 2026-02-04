@@ -440,7 +440,7 @@ const FileShare: React.FC = () => {
               </div>
               <div className="space-y-4 animate-fade-in-up delay-150">
                 <h1 className="text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
-                  Elegant file sharing, now in a darker calm.
+                  Elegant file sharing without any limits
                 </h1>
                 <p className="text-lg text-muted-foreground">
                   WarpShare connects browsers directly, so your files move fast, stay private, and never touch a server.
