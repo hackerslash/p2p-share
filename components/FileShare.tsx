@@ -3,8 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 import Navbar from './Navbar';
-import {QRCodeCanvas} from 'qrcode.react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { QRCodeCanvas } from 'qrcode.react';
+import { useSearchParams } from 'next/navigation';
 
 interface FileTransfer {
   file: File;
@@ -34,7 +34,6 @@ const FileShare: React.FC = () => {
   const [shareUrl, setShareUrl] = useState<string>('');
   const [showQR, setShowQR] = useState(false);
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const CHUNK_SIZE = 262144; // Increase to 256KB chunks
@@ -57,15 +56,15 @@ const FileShare: React.FC = () => {
       // Start peer and then connect
       const newPeer = new Peer();
       setPeer(newPeer);
-      
+
       newPeer.on('open', async () => {
         setPeerId(newPeer.id);
         setStatus('Peer started. Connecting...');
-        
+
         // Fetch peer ID and connect automatically
         const response = await fetch(`/api/share?id=${shareId}`);
         const data = await response.json();
-        
+
         if (data.peerId) {
           setConnectId(data.peerId);
           const connection = newPeer.connect(data.peerId);
@@ -89,7 +88,7 @@ const FileShare: React.FC = () => {
     newPeer.on('open', async (id) => {
       setPeerId(id);
       setStatus('Peer started. Waiting for connection...');
-      
+
       // Generate share URL
       const response = await fetch('/api/share', {
         method: 'POST',
@@ -153,28 +152,28 @@ const FileShare: React.FC = () => {
         receivingFile.receivedChunks++;
 
         const progress = Math.round((receivingFile.receivedChunks / data.totalChunks) * 100);
-        
-        setReceivingFiles(prev => prev.map(f => 
-          f.file.name === data.fileName 
-            ? { ...f, progress, status: 'transferring' } 
+
+        setReceivingFiles(prev => prev.map(f =>
+          f.file.name === data.fileName
+            ? { ...f, progress, status: 'transferring' }
             : f
         ));
 
         if (receivingFile.receivedChunks === receivingFile.totalChunks) {
           const allChunksReceived = receivingFile.data.every(chunk => chunk !== undefined);
-          
+
           if (allChunksReceived) {
             const fileBlob = new Blob(receivingFile.data, { type: receivingFile.type });
             downloadFile(fileBlob, receivingFile.name, receivingFile.type);
-            setReceivingFiles(prev => prev.map(f => 
-              f.file.name === data.fileName 
-                ? { ...f, progress: 100, status: 'completed' } 
+            setReceivingFiles(prev => prev.map(f =>
+              f.file.name === data.fileName
+                ? { ...f, progress: 100, status: 'completed' }
                 : f
             ));
           } else {
-            setReceivingFiles(prev => prev.map(f => 
-              f.file.name === data.fileName 
-                ? { ...f, status: 'error' } 
+            setReceivingFiles(prev => prev.map(f =>
+              f.file.name === data.fileName
+                ? { ...f, status: 'error' }
                 : f
             ));
           }
@@ -193,13 +192,13 @@ const FileShare: React.FC = () => {
 
   const sendFileInChunks = async (fileTransfer: FileTransfer, index: number) => {
     if (!conn) return;
-    
+
     const file = fileTransfer.file;
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     const CONCURRENT_CHUNKS = 3; // Reduced from 5 to 3 for better reliability
     const MAX_RETRIES = 3;
-    
-    setFiles(prev => prev.map((f, i) => 
+
+    setFiles(prev => prev.map((f, i) =>
       i === index ? { ...f, status: 'transferring' } : f
     ));
 
@@ -209,7 +208,7 @@ const FileShare: React.FC = () => {
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const chunk = file.slice(start, end);
         const buffer = await chunk.arrayBuffer();
-        
+
         conn.send({
           type: 'chunk',
           fileId: index,
@@ -219,7 +218,7 @@ const FileShare: React.FC = () => {
           chunkIndex: chunkIndex,
           totalChunks,
         });
-        
+
         return true;
       } catch (error) {
         if (retryCount < MAX_RETRIES) {
@@ -232,34 +231,34 @@ const FileShare: React.FC = () => {
 
     for (let i = 0; i < totalChunks; i += CONCURRENT_CHUNKS) {
       const chunkPromises = [];
-      
+
       for (let j = 0; j < CONCURRENT_CHUNKS && (i + j) < totalChunks; j++) {
         chunkPromises.push(sendChunk(i + j));
       }
-      
+
       const results = await Promise.all(chunkPromises);
-      
+
       if (results.includes(false)) {
-        setFiles(prev => prev.map((f, idx) => 
+        setFiles(prev => prev.map((f, idx) =>
           idx === index ? { ...f, status: 'error' } : f
         ));
         return;
       }
-      
+
       const progress = Math.round(((i + CONCURRENT_CHUNKS) / totalChunks) * 100);
-      setFiles(prev => prev.map((f, idx) => 
+      setFiles(prev => prev.map((f, idx) =>
         idx === index ? { ...f, progress: Math.min(progress, 100) } : f
       ));
     }
 
-    setFiles(prev => prev.map((f, i) => 
+    setFiles(prev => prev.map((f, i) =>
       i === index ? { ...f, status: 'completed' } : f
     ));
   };
 
   const sendFiles = async () => {
     if (!conn || files.length === 0 || isTransferring) return;
-    
+
     setIsTransferring(true);
     setStatus('Sending files...');
 
@@ -302,7 +301,7 @@ const FileShare: React.FC = () => {
     const now = Date.now();
     const last = lastProgressUpdate.current[fileId];
     const lastUpdate = lastSpeedUpdate.current[fileId] || 0;
-    
+
     // Initialize speed history for this file if it doesn't exist
     if (!speedHistory.current[fileId]) {
       speedHistory.current[fileId] = [];
@@ -328,17 +327,17 @@ const FileShare: React.FC = () => {
         }
 
         // Calculate average speed from history
-        const avgSpeed = speedHistory.current[fileId].reduce((sum, item) => sum + item.speed, 0) / 
+        const avgSpeed = speedHistory.current[fileId].reduce((sum, item) => sum + item.speed, 0) /
                         speedHistory.current[fileId].length;
 
         // Only update if we have a reasonable speed value
         if (avgSpeed >= 0 && avgSpeed < 1e9) { // Max 1GB/s as sanity check
           if (isReceiving) {
-            setReceivingFiles(prev => prev.map(f => 
+            setReceivingFiles(prev => prev.map(f =>
               f.file.name === fileId ? { ...f, speed: avgSpeed } : f
             ));
           } else {
-            setFiles(prev => prev.map((f, idx) => 
+            setFiles(prev => prev.map((f, idx) =>
               idx === parseInt(fileId) ? { ...f, speed: avgSpeed } : f
             ));
           }
@@ -364,272 +363,376 @@ const FileShare: React.FC = () => {
     return `${(speed / (1024 * 1024)).toFixed(1)} MB/s`;
   };
 
-  const FileProgressBar = ({ file, index }: { file: FileTransfer, index: number }) => (
-    <div key={index} className="border rounded-lg p-4">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm text-gray-500">{file.file.name}</span>
-        <div className="text-sm text-gray-500">
-          {file.status === 'pending' ? (
-            <span>Ready to send</span>
-          ) : (
-            <>
-              <span>{file.status === 'completed' ? '100%' : `${file.progress}%`}</span>
-              {file.speed && file.status === 'transferring' && (
-                <span className="ml-2">({formatSpeed(file.speed)})</span>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className={`h-2 rounded-full ${
-            file.status === 'completed' 
-              ? 'bg-green-500' 
-              : file.status === 'error'
-              ? 'bg-red-500'
-              : file.status === 'pending'
-              ? 'bg-gray-400'
-              : 'bg-indigo-600'
-          }`}
-          style={{ width: `${file.status === 'pending' ? '0%' : `${file.progress}%`}` }}
-        />
-      </div>
-    </div>
-  );
+  const FileProgressBar = ({ file, index }: { file: FileTransfer, index: number }) => {
+    const isError = file.status === 'error';
+    const isDone = file.status === 'completed';
+    const isPending = file.status === 'pending';
+    const progressValue = isPending ? 0 : file.progress;
+    const barColor = isError
+      ? 'bg-red-500'
+      : isDone
+        ? 'bg-emerald-500'
+        : isPending
+          ? 'bg-white/20'
+          : 'bg-primary';
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-      {/* Single Status Indicator */}
-      {(peer || searchParams.get('share') || isConnected) && (
-        <div className={`py-2 ${isConnected ? 'bg-green-50' : 'bg-blue-50'}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-center space-x-2">
-              <div className={`h-2.5 w-2.5 rounded-full animate-pulse ${
-                isConnected 
-                  ? 'bg-green-500'
-                  : status.includes('Waiting') 
-                    ? 'bg-orange-500' 
-                    : 'bg-blue-500'
-              }`}></div>
-              <span className={`text-sm font-medium ${
-                isConnected
-                  ? 'text-green-700'
-                  : status.includes('Waiting')
-                    ? 'text-orange-700'
-                    : 'text-blue-700'
-              }`}>
-                {isConnected ? 'Peer Connected' : status}
-              </span>
-            </div>
+    return (
+      <div key={index} className="glass rounded-2xl p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">{file.file.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {isPending && 'Ready to send'}
+              {file.status === 'transferring' && 'Transferring'}
+              {isDone && 'Completed'}
+              {isError && 'Transfer interrupted'}
+            </p>
+          </div>
+          <div className="text-xs font-medium text-muted-foreground">
+            {isPending ? '0%' : isDone ? '100%' : `${file.progress}%`}
+            {file.speed && file.status === 'transferring' && (
+              <span className="ml-2">{formatSpeed(file.speed)}</span>
+            )}
           </div>
         </div>
-      )}
-      <div className="flex-grow container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Initial state - only show when not connected and not connecting via share link */}
-          {!peer && !searchParams.get('share') && (
-            <div className="space-y-6">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-500 transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer.files) {
-                    const newFiles = Array.from(e.dataTransfer.files).map(file => ({
-                      file,
-                      progress: 0,
-                      status: 'pending' as const,
-                    }));
-                    setFiles(prev => [...prev, ...newFiles]);
-                  }
-                }}
-                onDragOver={(e) => e.preventDefault()}>
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileChange}
-                  ref={fileInputRef}
-                  multiple
-                />
-                <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <p className="mt-2 text-sm text-gray-600">Drop files here or click to select</p>
-                <p className="mt-1 text-xs text-gray-500">Supports any file type</p>
+        <div className="mt-3 h-1.5 w-full rounded-full bg-white/10">
+          <div
+            className={`h-1.5 rounded-full transition-all duration-300 ${barColor}`}
+            style={{ width: `${progressValue}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const showStatus = Boolean(peer || searchParams.get('share') || isConnected);
+  const statusTone = isConnected
+    ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+    : status.includes('Waiting')
+      ? 'border-amber-300/30 bg-amber-300/10 text-amber-200'
+      : 'border-primary/30 bg-primary/10 text-primary';
+  const statusLabel = isConnected ? 'Connected to peer' : status || 'Starting secure session...';
+
+  return (
+    <div className="app-shell min-h-screen text-foreground">
+      <Navbar />
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute -top-32 right-6 h-72 w-72 rounded-full bg-primary/20 blur-3xl animate-float" />
+        <div className="pointer-events-none absolute top-24 -left-28 h-80 w-80 rounded-full bg-slate-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-1/3 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
+        <main className="relative mx-auto max-w-6xl px-6 pb-20 pt-12 lg:pt-16">
+          <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+            <section className="space-y-8">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-muted-foreground animate-fade-in-up">
+                <span className="h-2 w-2 rounded-full bg-primary animate-pulse-soft" />
+                Private P2P Transfer
+              </div>
+              <div className="space-y-4 animate-fade-in-up delay-150">
+                <h1 className="text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
+                  Elegant file sharing, now in a darker calm.
+                </h1>
+                <p className="text-lg text-muted-foreground">
+                  WarpShare connects browsers directly, so your files move fast, stay private, and never touch a server.
+                </p>
               </div>
 
-              {/* Show pending files before starting peer */}
-              {files.length > 0 && (
-                <div className="space-y-4">
-                  <div className="mt-4">
-                    <h3 className="text-lg font-medium mb-4">Selected Files</h3>
-                    <div className="space-y-4">
-                      {files.map((file, index) => (
-                        <FileProgressBar key={index} file={file} index={index} />
-                      ))}
-                    </div>
+              <div className="grid gap-4 sm:grid-cols-3 animate-fade-in-up delay-300">
+                <div className="glass rounded-2xl p-4">
+                  <p className="text-sm font-semibold text-foreground">No size limits</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Send massive files with zero storage caps.</p>
+                </div>
+                <div className="glass rounded-2xl p-4">
+                  <p className="text-sm font-semibold text-foreground">Instant pairing</p>
+                  <p className="mt-1 text-xs text-muted-foreground">One link, one scan, and you are connected.</p>
+                </div>
+                <div className="glass rounded-2xl p-4">
+                  <p className="text-sm font-semibold text-foreground">Private by design</p>
+                  <p className="mt-1 text-xs text-muted-foreground">No uploads, no accounts, no tracking.</p>
+                </div>
+              </div>
+
+              <div className="glass-strong shine rounded-3xl p-6 animate-fade-in-up delay-500">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                      Built for focus
+                    </p>
+                    <p className="mt-2 text-base text-foreground">
+                      Fast, quiet, and respectful of your bandwidth. Transfers stay in the browser, and you control the session.
+                    </p>
                   </div>
+                  <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-xs text-primary/90">
+                    <img
+                      src="https://webrtc.github.io/webrtc-org/assets/images/webrtc-logo-vert-retro-dist.svg"
+                      alt="WebRTC"
+                      className="h-8 w-auto opacity-90"
+                      loading="lazy"
+                    />
+                    <span className="text-xs font-semibold uppercase tracking-[0.22em] text-primary/80">
+                      WebRTC + end-to-end transport
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </section>
+
+            <section className="space-y-6">
+              {showStatus && (
+                <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${statusTone} animate-fade-in-up`}>
+                  <span className="h-2 w-2 rounded-full bg-current" />
+                  {statusLabel}
                 </div>
               )}
 
-              <button
-                onClick={startPeer}
-                className="w-full py-3 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Send Files
-              </button>
-            </div>
-          )}
+              <div className="glass-strong rounded-3xl p-6 animate-fade-in-up delay-150">
+                {!peer && !searchParams.get('share') && (
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Start here</p>
+                      <h2 className="mt-2 text-2xl font-semibold text-foreground">Create a private session</h2>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Add the files you want to send, then generate a share link for the recipient.
+                      </p>
+                    </div>
 
-          {/* Connecting status - show when peer is starting or connecting via share link */}
-          {(peer || searchParams.get('share')) && !isConnected && (
-            showQR && (
-              <div className="space-y-6 bg-card p-8 rounded-lg border border-border shadow-sm">
-                <div className="text-center space-y-4">
-                  <h3 className="text-lg font-semibold text-foreground">Share this link with recipient</h3>
-                  <div className="flex justify-center">
-                    <div className="p-4 bg-white rounded-lg border border-border">
-                      <QRCodeCanvas 
-                        value={shareUrl} 
-                        size={200}
-                        className="rounded-lg"
-                        style={{ display: 'block' }}
+                    <div
+                      className="rounded-3xl border-2 border-dashed border-white/20 bg-white/5 p-8 text-center transition hover:border-primary/60"
+                      onClick={() => fileInputRef.current?.click()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (e.dataTransfer.files) {
+                          const newFiles = Array.from(e.dataTransfer.files).map(file => ({
+                            file,
+                            progress: 0,
+                            status: 'pending' as const,
+                          }));
+                          setFiles(prev => [...prev, ...newFiles]);
+                        }
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                    >
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileChange}
+                        ref={fileInputRef}
+                        multiple
                       />
+                      <svg className="mx-auto h-12 w-12 text-muted-foreground" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <p className="mt-3 text-sm font-medium text-foreground">Drop files here or click to select</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Any file type, any size, peer to peer.</p>
+                    </div>
+
+                    {files.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Selected files</h3>
+                        <div className="space-y-3">
+                          {files.map((file, index) => (
+                            <FileProgressBar key={index} file={file} index={index} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={startPeer}
+                      className="shine w-full rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_12px_30px_-16px_rgba(0,0,0,0.7)] transition hover:bg-primary/90"
+                    >
+                      Generate Share Link
+                    </button>
+                  </div>
+                )}
+
+                {(peer || searchParams.get('share')) && !isConnected && !showQR && (
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Connecting</p>
+                      <h2 className="mt-2 text-2xl font-semibold text-foreground">Starting secure session</h2>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Generating the share link. This should take just a moment.
+                      </p>
+                    </div>
+                    <div className="glass rounded-3xl p-8 flex flex-col items-center justify-center gap-4 text-center">
+                      <div className="h-12 w-12 rounded-full border-2 border-dashed border-primary/70 border-t-transparent animate-spin" />
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                        Waiting for link
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={shareUrl}
-                      className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm text-foreground"
-                    />
-                    <button
-                      onClick={() => navigator.clipboard.writeText(shareUrl)}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          )}
+                )}
 
-          {/* Connected UI - show for both sender and receiver when connected */}
-          {isConnected && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                {/* File Drop Zone */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-500 transition-colors cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}>
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileChange}
-                    ref={fileInputRef}
-                    multiple
-                  />
-                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <p className="mt-2 text-sm text-gray-600">Drop files here or click to select</p>
-                </div>
-
-                {/* File Transfer Progress */}
-                {files.length > 0 && (
-                  <div className="space-y-4">
-                    <button
-                      onClick={sendFiles}
-                      disabled={isTransferring}
-                      className={`w-full py-3 px-4 rounded-lg transition-colors ${
-                        isTransferring 
-                          ? 'bg-gray-400 cursor-not-allowed' 
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      }`}
-                    >
-                      {isTransferring ? 'Sending...' : 'Send Files'}
-                    </button>
-
-                    {/* Sending Files Section */}
-                    <div className="mt-8 border-t border-gray-200 pt-6">
-                      <h3 className="text-lg font-medium mb-4">Sending Files</h3>
-                      <div className="space-y-4">
-                        {files.map((file, index) => (
-                          <FileProgressBar key={index} file={file} index={index} />
-                        ))}
+                {(peer || searchParams.get('share')) && !isConnected && showQR && (
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Share</p>
+                      <h2 className="mt-2 text-2xl font-semibold text-foreground">Invite your recipient</h2>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Send this link or QR code. Once they connect, your private session goes live.
+                      </p>
+                    </div>
+                    <div className="glass rounded-3xl p-6">
+                      <div className="flex flex-col items-center gap-6">
+                        <div className="rounded-2xl border border-white/10 bg-white p-4">
+                          <QRCodeCanvas
+                            value={shareUrl}
+                            size={200}
+                            className="rounded-lg"
+                            style={{ display: 'block' }}
+                          />
+                        </div>
+                        <div className="flex w-full flex-col gap-3 sm:flex-row">
+                          <input
+                            type="text"
+                            readOnly
+                            value={shareUrl}
+                            className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-foreground"
+                          />
+                          <button
+                            onClick={() => navigator.clipboard.writeText(shareUrl)}
+                            className="rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:bg-white/20"
+                          >
+                            Copy Link
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Receiving Files Section */}
-                {receivingFiles.length > 0 && (
-                  <div className="mt-8 border-t border-gray-200 pt-6">
-                    <h3 className="text-lg font-medium mb-4">Receiving Files</h3>
-                    <div className="space-y-4">
-                      {receivingFiles.map((file, index) => (
-                        <FileProgressBar key={index} file={file} index={index} />
-                      ))}
+                {isConnected && (
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground">Live session</p>
+                      <h2 className="mt-2 text-2xl font-semibold text-foreground">Transfer files</h2>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Drag files into the drop zone or browse to send them instantly.
+                      </p>
                     </div>
+
+                    <div
+                      className="rounded-3xl border-2 border-dashed border-white/20 bg-white/5 p-8 text-center transition hover:border-primary/60"
+                      onClick={() => fileInputRef.current?.click()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (e.dataTransfer.files) {
+                          const newFiles = Array.from(e.dataTransfer.files).map(file => ({
+                            file,
+                            progress: 0,
+                            status: 'pending' as const,
+                          }));
+                          setFiles(prev => [...prev, ...newFiles]);
+                        }
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                    >
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileChange}
+                        ref={fileInputRef}
+                        multiple
+                      />
+                      <svg className="mx-auto h-12 w-12 text-muted-foreground" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <p className="mt-3 text-sm font-medium text-foreground">Drop files here or click to select</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Your files never touch a server.</p>
+                    </div>
+
+                    {files.length > 0 && (
+                      <div className="space-y-4">
+                        <button
+                          onClick={sendFiles}
+                          disabled={isTransferring}
+                          className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold shadow-[0_12px_30px_-16px_rgba(0,0,0,0.7)] transition ${
+                            isTransferring
+                              ? 'bg-white/10 text-muted-foreground'
+                              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          }`}
+                        >
+                          {isTransferring ? 'Sending...' : 'Send Files'}
+                        </button>
+
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Sending</h3>
+                          {files.map((file, index) => (
+                            <FileProgressBar key={index} file={file} index={index} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {receivingFiles.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Receiving</h3>
+                        {receivingFiles.map((file, index) => (
+                          <FileProgressBar key={index} file={file} index={index} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="glass rounded-2xl px-4 py-3 text-xs text-muted-foreground">
+                  No uploads. Direct transfer.
+                </div>
+                <div className="glass rounded-2xl px-4 py-3 text-xs text-muted-foreground">
+                  Open source, auditable.
+                </div>
+                <div className="glass rounded-2xl px-4 py-3 text-xs text-muted-foreground">
+                  Works on any device.
+                </div>
+              </div>
+
+              <div className="glass rounded-2xl px-5 py-4 text-xs text-muted-foreground">
+                Tip: Keep this tab open while the transfer runs. Closing it ends the connection.
+              </div>
+            </section>
+          </div>
+
+          <div id="about" className="mt-20 rounded-3xl border border-white/10 bg-white/5 p-10 shadow-[0_24px_70px_-55px_rgba(0,0,0,0.8)] backdrop-blur">
+            <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground">Why WarpShare</p>
+                <h2 className="mt-3 text-3xl font-semibold text-foreground">Private file sharing that feels effortless.</h2>
+                <p className="mt-4 text-base text-muted-foreground">
+                  WarpShare uses WebRTC to connect peers directly. No file storage, no accounts, no waiting rooms. Just a secure link and a seamless exchange.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div className="glass rounded-2xl p-5">
+                  <p className="text-sm font-semibold text-foreground">How it works</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Share a link, scan the code, and transfer. The connection happens entirely in the browser.
+                  </p>
+                </div>
+                <div className="glass rounded-2xl p-5">
+                  <p className="text-sm font-semibold text-foreground">Security</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Files move directly between peers, never landing on a server. You stay in control from start to finish.
+                  </p>
+                </div>
+                <div className="glass rounded-2xl p-5">
+                  <p className="text-sm font-semibold text-foreground">Momentum</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Designed for speed and clarity with calm, dark UI and subtle glass layering.
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-      {/* About Section */}
-      <div id="about" className="bg-secondary/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="lg:text-center">
-            <h2 className="text-base text-primary font-semibold tracking-wide uppercase">About</h2>
-            <p className="mt-2 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-              Why P2P File Sharing?
-            </p>
-            <p className="mt-4 max-w-2xl text-xl text-muted-foreground lg:mx-auto">
-              P2P File Sharing allows for direct, secure, and efficient file transfers between users without the need for intermediary servers.
-            </p>
           </div>
-          <div className="mt-12">
-            <dl className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
-              <div className="relative bg-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <dt>
-                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-xl bg-primary text-primary-foreground">
-                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <p className="ml-16 text-lg font-semibold text-foreground">How it works</p>
-                </dt>
-                <dd className="mt-2 ml-16 text-base text-muted-foreground">
-                  Our P2P File Sharing uses WebRTC technology to establish a direct connection between peers. Files are transferred directly between users' browsers, ensuring speed and privacy.
-                </dd>
-              </div>
-              <div className="relative bg-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <dt>
-                  <div className="absolute flex items-center justify-center h-12 w-12 rounded-xl bg-primary text-primary-foreground">
-                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </div>
-                  <p className="ml-16 text-lg font-semibold text-foreground">Security</p>
-                </dt>
-                <dd className="mt-2 ml-16 text-base text-muted-foreground">
-                  The peer-to-peer nature of the connection ensures that your files are transferred directly, without being stored on any intermediate servers, enhancing privacy and security.
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
+        </main>
       </div>
-      <footer className="bg-background border-t border-border py-8 text-center">
-        <p className="text-sm text-muted-foreground">&copy; Copyright Md Afridi 2024</p>
+      <footer className="border-t border-white/10 bg-background/80 py-8 text-center text-xs text-muted-foreground">
+        <p>&copy; Copyright Md Afridi 2024</p>
       </footer>
     </div>
   );
 };
 
 export default FileShare;
-

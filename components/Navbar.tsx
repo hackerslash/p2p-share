@@ -1,42 +1,42 @@
 import React from 'react';
 import { Github } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-
 const Navbar: React.FC = () => {
-  const router = useRouter();
-
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     window.location.reload();
   };
 
   return (
-    <nav className="bg-card border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex-shrink-0">
-            <a 
-              href="/"
-              onClick={handleLogoClick}
-              className="text-xl font-semibold tracking-tight hover:text-primary transition-colors"
-            >
-              WarpShare ⚡
-            </a>
-          </div>
-          <div className="flex items-center space-x-4">
-            <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
-              About
-            </a>
-            <a
-              href="https://github.com/hackerslash/p2p-share"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-lg hover:bg-accent"
-            >
-              <Github className="h-5 w-5" />
-            </a>
-          </div>
+    <nav className="sticky top-0 z-40 border-b border-white/10 bg-background/80 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <a
+            href="/"
+            onClick={handleLogoClick}
+            className="font-display text-xl tracking-tight text-foreground transition-colors hover:text-primary"
+          >
+            WarpShare
+          </a>
+          <span className="hidden rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground sm:inline-flex">
+            Direct P2P
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <a
+            href="#about"
+            className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            About
+          </a>
+          <a
+            href="https://github.com/hackerslash/p2p-share"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full border border-white/10 bg-white/10 p-2 text-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15"
+            aria-label="Open GitHub"
+          >
+            <Github className="h-4 w-4" />
+          </a>
         </div>
       </div>
     </nav>
@@ -44,4 +44,3 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
-
