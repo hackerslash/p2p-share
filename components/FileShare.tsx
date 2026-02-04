@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 import Navbar from './Navbar';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -41,6 +41,7 @@ const FileShare: React.FC = () => {
   const SPEED_HISTORY_LENGTH = 5; // Number of samples to average
   const lastSpeedUpdate = useRef<{ [key: string]: number }>({});
   const speedHistory = useRef<{ [key: string]: SpeedHistory[] }>({});
+  const autoSendRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -117,6 +118,7 @@ const FileShare: React.FC = () => {
 
   const setupConnection = (connection: DataConnection) => {
     connection.on('open', () => {
+      autoSendRef.current = false;
       setStatus('Connected');
       setIsConnected(true);
       setConn(connection);
@@ -187,6 +189,7 @@ const FileShare: React.FC = () => {
       setIsConnected(false);
       setConn(null);
       setFiles([]);
+      autoSendRef.current = false;
     });
   };
 
@@ -256,7 +259,7 @@ const FileShare: React.FC = () => {
     ));
   };
 
-  const sendFiles = async () => {
+  const sendFiles = useCallback(async () => {
     if (!conn || files.length === 0 || isTransferring) return;
 
     setIsTransferring(true);
@@ -271,7 +274,15 @@ const FileShare: React.FC = () => {
 
     setStatus('All files sent');
     setIsTransferring(false);
-  };
+  }, [conn, files, isTransferring]);
+
+  useEffect(() => {
+    const hasPending = files.some(file => file.status === 'pending');
+    if (isConnected && hasPending && !isTransferring && !autoSendRef.current) {
+      autoSendRef.current = true;
+      sendFiles();
+    }
+  }, [isConnected, files, isTransferring, sendFiles]);
 
   const downloadFile = (fileData: Blob | ArrayBuffer, fileName: string, fileType: string) => {
     const blob = fileData instanceof Blob ? fileData : new Blob([fileData], { type: fileType });
